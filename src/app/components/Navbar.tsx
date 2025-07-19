@@ -205,12 +205,14 @@ export default function Navbar() {
   const [shakeHome, setShakeHome] = useState(false);
   const pathname = usePathname();
   const homeLinkRef = useRef<HTMLDivElement>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const closeMenu = useCallback(() => {
     setMobileOpen(false);
   }, []);
 
   useEffect(() => {
+    setIsMounted(true);
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
     };
@@ -229,6 +231,8 @@ export default function Navbar() {
     }
     setMobileOpen(prev => !prev);
   };
+
+  if (!isMounted) return null;
 
   return (
     <>
