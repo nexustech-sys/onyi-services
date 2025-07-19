@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu,
@@ -17,7 +17,6 @@ import {
   Settings,
   CircleDollarSign
 } from "lucide-react";
-import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   {
@@ -73,21 +72,14 @@ const NavLink = ({
   children,
   onClick,
   className = "",
-  mobile = false,
-  closeMenu
+  mobile = false
 }: {
   href: string;
   children: React.ReactNode;
   onClick?: () => void;
   className?: string;
   mobile?: boolean;
-  closeMenu: () => void;
 }) => {
-  const handleClick = (e: React.MouseEvent) => {
-    closeMenu();
-    onClick?.();
-  };
-
   return (
     <motion.div
       whileHover={{ scale: mobile ? 1 : 1.05 }}
@@ -96,7 +88,7 @@ const NavLink = ({
     >
       <Link
         href={href}
-        onClick={handleClick}
+        onClick={onClick}
         className={`flex items-center gap-2 font-medium transition-all ${
           mobile 
             ? "text-gray-200 hover:text-orange-400 py-3 px-4 rounded-lg"
@@ -112,25 +104,11 @@ const NavLink = ({
 const Dropdown = ({
   item,
   mobile = false,
-  closeMenu
 }: {
   item: typeof NAV_ITEMS[0];
   mobile?: boolean;
-  closeMenu: () => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const pathname = usePathname();
-
-  useEffect(() => {
-    if (pathname === item.href || item.subItems.some(subItem => pathname === subItem.href)) {
-      setIsOpen(false);
-    }
-  }, [pathname, item.href, item.subItems]);
-
-  const toggleDropdown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsOpen(!isOpen);
-  };
 
   return (
     <div className={`relative ${mobile ? "w-full" : ""}`}>
@@ -138,15 +116,13 @@ const Dropdown = ({
         <NavLink 
           href={item.href} 
           className={!mobile ? "pr-0" : ""}
-          closeMenu={closeMenu}
-          onClick={() => setIsOpen(false)}
         >
           <>{item.icon} {item.title}</>
         </NavLink>
         
         {item.subItems.length > 0 && (
           <button
-            onClick={toggleDropdown}
+            onClick={() => setIsOpen(!isOpen)}
             onMouseEnter={!mobile ? () => setIsOpen(true) : undefined}
             className={`ml-1 p-1 rounded-full ${
               mobile ? "text-gray-400" : "text-gray-300 hover:text-orange-400"
@@ -180,12 +156,11 @@ const Dropdown = ({
                 key={subItem.href}
                 initial={{ x: -10, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
-                transition={{ duration: 0.15, delay: index * 0.03 }}
+                transition={{ duration: 0.15, delay: mobile ? index * 0.03 : 0 }}
               >
                 <NavLink 
                   href={subItem.href} 
                   mobile={mobile}
-                  closeMenu={closeMenu}
                 >
                   <span className="text-orange-400">{subItem.icon}</span>
                   {subItem.label}
@@ -202,17 +177,10 @@ const Dropdown = ({
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [shakeHome, setShakeHome] = useState(false);
-  const pathname = usePathname();
-  const homeLinkRef = useRef<HTMLDivElement>(null);
-  const [isMounted, setIsMounted] = useState(false);
-
-  const closeMenu = useCallback(() => {
-    setMobileOpen(false);
-  }, []);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    setMounted(true);
     const handleScroll = () => {
       setScrolled(window.scrollY > 10);
     };
@@ -220,81 +188,60 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  useEffect(() => {
-    closeMenu();
-  }, [pathname, closeMenu]);
-
-  const toggleMenu = () => {
-    if (mobileOpen) {
-      setShakeHome(true);
-      setTimeout(() => setShakeHome(false), 1000);
-    }
-    setMobileOpen(prev => !prev);
-  };
-
-  if (!isMounted) return null;
-
   return (
     <>
+      {/* Main Navbar */}
       <motion.nav
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[95%] max-w-6xl rounded-full ${
           scrolled ? "bg-black/80 backdrop-blur-md shadow-xl" : "bg-black/60 backdrop-blur-sm"
         } border border-gray-700/50 transition-all duration-300`}
       >
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
+            {/* Logo */}
             <motion.div 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <NavLink href="/" className="text-xl font-bold" closeMenu={closeMenu}>
-                <motion.div
-                  ref={homeLinkRef}
-                  animate={shakeHome ? {
-                    rotate: [0, -10, 10, -10, 10, 0],
-                    transition: { duration: 0.6 }
-                  } : {}}
-                  className="flex items-center"
-                >
-                  <div className="bg-orange-500 p-2 rounded-lg shadow-lg">
-                    <Wrench size={24} className="text-white" />
-                  </div>
-                  <span className="text-white ml-2 font-bold">
-                    <span className="text-orange-400">ONYII'S </span>  SERVICES
-                  </span>
-                </motion.div>
+              <NavLink href="/" className="text-xl font-bold">
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-2 rounded-lg shadow-lg">
+                  <Wrench size={24} className="text-white" />
+                </div>
+                <span className="text-white ml-2 font-bold">
+                  <span className="text-orange-400">ONYII'S </span> SERVICES
+                </span>
               </NavLink>
             </motion.div>
 
+            {/* Desktop Navigation */}
             <ul className="hidden lg:flex items-center gap-1 font-bold">
               <li>
-                <NavLink href="/" closeMenu={closeMenu}>
-                  <Home size={18} className="text-orange-400 " />
+                <NavLink href="/">
+                  <Home size={18} className="text-orange-400" />
                   Home
                 </NavLink>
               </li>
               
               {NAV_ITEMS.map((item) => (
                 <li key={item.title}>
-                  <Dropdown item={item} closeMenu={closeMenu} />
+                  <Dropdown item={item} />
                 </li>
               ))}
               
               <li>
-                <NavLink href="/contact" closeMenu={closeMenu}>
+                <NavLink href="/contact">
                   <Phone size={18} className="text-orange-400" />
                   Contact
                 </NavLink>
               </li>
               
-              <motion.li whileHover={{ scale: 1.05 }}>
+              <motion.li whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link 
                   href="/quote" 
-                  onClick={closeMenu}
-                  className="ml-2 bg-orange-500 hover:bg-orange-600 text-white px-5 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 shadow-lg"
+                  className="ml-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-5 py-2 rounded-lg font-semibold transition-all flex items-center gap-2 shadow-lg hover:shadow-orange-500/20"
                 >
                   <CircleDollarSign size={18} />
                   Get Quote
@@ -302,12 +249,13 @@ export default function Navbar() {
               </motion.li>
             </ul>
 
+            {/* Mobile Menu Button */}
             <motion.div 
               className="lg:hidden"
               whileTap={{ scale: 0.9 }}
             >
               <button 
-                onClick={toggleMenu}
+                onClick={() => setMobileOpen(!mobileOpen)}
                 className="p-2 rounded-lg bg-black/30 text-gray-200 hover:text-orange-400 focus:outline-none transition-all"
                 aria-label="Menu"
               >
@@ -322,78 +270,98 @@ export default function Navbar() {
         </div>
       </motion.nav>
 
+      {/* Full-screen Mobile Menu */}
       <AnimatePresence>
         {mobileOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40"
-              onClick={closeMenu}
-            />
-            
-            <motion.div
-              initial={{ y: "-100vh", opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: "-100vh", opacity: 0 }}
-              transition={{ 
-                type: "spring",
-                damping: 25,
-                stiffness: 200
-              }}
-              className="fixed inset-0 z-50 pt-24 px-4 pb-8 overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-gray-700/50 shadow-2xl overflow-hidden">
-                <div className="p-4 space-y-2">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="fixed inset-0 z-40 pt-20 bg-gradient-to-b from-gray-900 to-gray-800 backdrop-blur-lg overflow-y-auto"
+          >
+            <div className="container mx-auto px-6 py-8">
+              <div className="flex flex-col space-y-6">
+                <motion.div
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                >
                   <NavLink 
                     href="/" 
-                    onClick={closeMenu}
+                    onClick={() => setMobileOpen(false)}
                     mobile
-                    closeMenu={closeMenu}
                   >
-                    <Home size={18} className="text-orange-400" />
-                    Home
+                    <Home size={20} className="text-orange-400" />
+                    <span className="text-lg">Home</span>
                   </NavLink>
-                  
-                  {NAV_ITEMS.map((item) => (
+                </motion.div>
+                
+                {NAV_ITEMS.map((item, index) => (
+                  <motion.div
+                    key={item.title}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.15 + (index * 0.05) }}
+                  >
                     <Dropdown 
                       key={item.title} 
                       item={item}
                       mobile 
-                      closeMenu={closeMenu}
                     />
-                  ))}
-                  
+                  </motion.div>
+                ))}
+                
+                <motion.div
+                  initial={{ x: -20, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  transition={{ delay: 0.35 }}
+                >
                   <NavLink 
                     href="/contact" 
-                    onClick={closeMenu}
+                    onClick={() => setMobileOpen(false)}
                     mobile
-                    closeMenu={closeMenu}
                   >
-                    <Phone size={18} className="text-orange-400" />
-                    Contact
+                    <Phone size={20} className="text-orange-400" />
+                    <span className="text-lg">Contact</span>
                   </NavLink>
-                  
-                  <motion.div 
-                    className="mt-4"
-                    whileTap={{ scale: 0.95 }}
+                </motion.div>
+                
+                <motion.div 
+                  className="mt-8"
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.45 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Link 
+                    href="/quote" 
+                    onClick={() => setMobileOpen(false)}
+                    className="block text-center bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-orange-500/30 text-lg"
                   >
-                    <Link 
-                      href="/quote" 
-                      onClick={closeMenu}
-                      className="block text-center bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-lg"
-                    >
-                      <CircleDollarSign size={18} />
-                      Free Quote
-                    </Link>
-                  </motion.div>
-                </div>
+                    <CircleDollarSign size={20} />
+                    Get Free Quote
+                  </Link>
+                </motion.div>
               </div>
-            </motion.div>
-          </>
+
+              {/* Close button at bottom */}
+              <motion.div
+                className="mt-12 flex justify-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="p-3 rounded-full bg-gray-800 text-gray-400 hover:text-orange-400 transition-all"
+                  aria-label="Close menu"
+                >
+                  <X size={24} />
+                </button>
+              </motion.div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>
